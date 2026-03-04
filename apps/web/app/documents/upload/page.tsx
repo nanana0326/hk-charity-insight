@@ -90,7 +90,7 @@ export default function UploadPage() {
       </div>
       <h2 className="text-xl font-semibold text-gray-900">Upload a document</h2>
       <p className="text-sm text-[var(--color-muted)]">
-        Upload an annual report, funding application, or project report (PDF or Word).
+        Upload an annual report, funding application, or project report (PDF, Word, or CSV).
         Choose whether to view the analysis from a <strong>funder</strong> or <strong>public</strong> perspective.
       </p>
 
@@ -156,14 +156,14 @@ export default function UploadPage() {
 
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-700">
-            File (PDF or Word)
+            File (PDF, Word, or CSV)
           </label>
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
             <label className="cursor-pointer rounded-lg border-0 bg-[var(--color-primary-light)] px-4 py-2 text-sm font-medium text-[var(--color-primary)] transition-colors hover:bg-orange-100">
               Upload a file
               <input
                 type="file"
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.docx,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/csv,application/csv"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 className="sr-only"
               />

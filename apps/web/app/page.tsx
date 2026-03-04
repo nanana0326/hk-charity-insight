@@ -1,4 +1,15 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { fetchDocumentList } from "@/lib/api";
+
+type DocumentListItem = {
+  id: number;
+  original_filename: string;
+  doc_type: string;
+  created_at: string;
+};
 
 function DocIcon() {
   return (
@@ -17,8 +28,22 @@ function ChartIcon() {
 }
 
 export default function HomePage() {
+  const [documents, setDocuments] = useState<DocumentListItem[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [listError, setListError] = useState(false);
+
+  useEffect(() => {
+    fetchDocumentList()
+      .then((r) => {
+        setDocuments(r.documents);
+        setListError(false);
+      })
+      .catch(() => setListError(true))
+      .finally(() => setListLoading(false));
+  }, []);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <section className="rounded-2xl border border-[var(--color-border)] bg-gradient-to-br from-orange-100 via-orange-50/80 to-sky-100 p-6 shadow-lg">
         <h2 className="text-xl font-semibold text-[var(--color-primary)]">
           Welcome to Foundation for Shared Impact
@@ -87,6 +112,27 @@ export default function HomePage() {
               View web impact →
             </span>
           </div>
+        </Link>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 shadow-sm flex items-center justify-between gap-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">Your documents</h3>
+          <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+            {listLoading
+              ? "Loading…"
+              : listError
+              ? "Documents could not be loaded."
+              : documents.length === 0
+              ? "No documents yet. Upload a document to get started."
+              : `${documents.length} document${documents.length > 1 ? "s" : ""} uploaded.`}
+          </p>
+        </div>
+        <Link
+          href="/documents/upload"
+          className="whitespace-nowrap rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] no-underline hover:bg-orange-100"
+        >
+          View documents →
         </Link>
       </section>
     </div>

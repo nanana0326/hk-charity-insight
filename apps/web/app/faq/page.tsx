@@ -3,7 +3,7 @@ import Link from "next/link";
 const FAQ_ITEMS = [
   {
     q: "What file formats can I upload?",
-    a: "You can upload PDF or Word (.docx) documents. For best results, use files with selectable text. Scanned PDFs are supported via OCR if Tesseract is installed.",
+    a: "You can upload PDF, Word (.docx), or CSV documents. For best results, use files with selectable text. Scanned PDFs are supported via OCR if Tesseract is installed.",
   },
   {
     q: "What is the difference between Funder and Public view?",

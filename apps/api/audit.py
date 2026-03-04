@@ -26,7 +26,7 @@ def log_event(
         resource_type=resource_type,
         resource_id=resource_id,
         actor_role=actor_role,
-        metadata=payload,
+        event_metadata=payload,
     )
     db.add(entry)
     db.commit()

@@ -108,12 +108,18 @@ async def upload_document(
     allowed_types = {
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "text/csv",
+        "application/csv",
+        "text/comma-separated-values",
     }
+    # Also allow by extension for CSV (browsers may send application/octet-stream)
     if file.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Unsupported file type",
-        )
+        fn = (file.filename or "").lower()
+        if not fn.endswith(".csv"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported file type",
+            )
 
     document = ingest.ingest_document(
         db,
@@ -134,8 +140,9 @@ async def upload_document(
     return schemas.DocumentUploadResponse(document_id=document.id, pages=pages_count)
 
 
-@router.post(
+@router.api_route(
     "/documents/{document_id}/analyze",
+    methods=["GET", "POST"],
     response_model=schemas.InsightReport,
     tags=["documents", "analysis"],
 )
@@ -300,8 +307,12 @@ def get_web_impact_summary(
     return summary
 
 
-@router.post(
-    "/documents/upload",
+@router.get(
+    "/documents/{document_id}/export",
+    response_model=schemas.DocumentExport,
+    tags=["documents"],
+)
+def export_document(
     document_id: int,
     ctx=Depends(get_request_context),
     db: Session = Depends(get_db),

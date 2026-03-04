@@ -166,5 +166,5 @@ class AuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    metadata: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    event_metadata: Mapped[Optional[str]] = mapped_column("metadata", Text, nullable=True)
 

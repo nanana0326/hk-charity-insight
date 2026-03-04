@@ -1,4 +1,5 @@
 import os
+import csv
 import pathlib
 from typing import Tuple
 
@@ -43,6 +44,29 @@ def _extract_pages_from_pdf(path: str) -> list[Tuple[int, str]]:
     return pages
 
 
+def _extract_pages_from_csv(path: str) -> list[Tuple[int, str]]:
+    """Read CSV and return as a single page of readable text for analysis."""
+    pages: list[Tuple[int, str]] = []
+    try:
+        with open(path, newline="", encoding="utf-8", errors="replace") as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+    except Exception:
+        with open(path, newline="", encoding="utf-16", errors="replace") as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+    if not rows:
+        pages.append((1, "(Empty CSV)"))
+        return pages
+    # Format as readable text: header + rows (limit size for very large CSVs)
+    lines = [" | ".join(cell.strip() for cell in row) for row in rows[:2000]]
+    text = "\n".join(lines)
+    if len(rows) > 2000:
+        text += f"\n\n... ({len(rows) - 2000} more rows)"
+    pages.append((1, text))
+    return pages
+
+
 def ingest_document(
     db: Session,
     *,
@@ -73,6 +97,12 @@ def ingest_document(
         ".pdf"
     ):
         pages = _extract_pages_from_pdf(stored_path)
+    elif (upload.content_type or "").lower() in (
+        "text/csv",
+        "application/csv",
+        "text/comma-separated-values",
+    ) or stored_path.lower().endswith(".csv"):
+        pages = _extract_pages_from_csv(stored_path)
 
     for page_number, text in pages:
         page = models.DocumentPage(

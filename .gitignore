@@ -22,3 +22,6 @@ venv/
 *.egg-info/
 dist/
 build/
+
+# Test data
+test_sample.csv

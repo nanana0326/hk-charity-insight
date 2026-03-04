@@ -1,0 +1,110 @@
+import os
+import pathlib
+from typing import Tuple
+
+from fastapi import UploadFile
+from pypdf import PdfReader
+from sqlalchemy.orm import Session
+
+from . import models
+
+
+BASE_STORAGE = pathlib.Path(os.getenv("DOCUMENT_STORAGE_ROOT", "data/uploads"))
+
+
+def _ensure_storage_root() -> None:
+    BASE_STORAGE.mkdir(parents=True, exist_ok=True)
+
+
+def _save_upload_file(tenant_id: int, upload: UploadFile, document_id: int) -> str:
+    _ensure_storage_root()
+    tenant_dir = BASE_STORAGE / f"tenant_{tenant_id}" / f"doc_{document_id}"
+    tenant_dir.mkdir(parents=True, exist_ok=True)
+
+    extension = pathlib.Path(upload.filename or "").suffix or ".bin"
+    dest_path = tenant_dir / f"original{extension}"
+
+    with dest_path.open("wb") as dest:
+        while True:
+            chunk = upload.file.read(1024 * 1024)
+            if not chunk:
+                break
+            dest.write(chunk)
+
+    return str(dest_path)
+
+
+def _extract_pages_from_pdf(path: str) -> list[Tuple[int, str]]:
+    reader = PdfReader(path)
+    pages: list[Tuple[int, str]] = []
+    for idx, page in enumerate(reader.pages, start=1):
+        text = page.extract_text() or ""
+        pages.append((idx, text))
+    return pages
+
+
+def ingest_document(
+    db: Session,
+    *,
+    tenant_id: int,
+    upload: UploadFile,
+    doc_type: models.DocumentType = models.DocumentType.OTHER,
+) -> models.Document:
+    """
+    Store uploaded file, extract plain text by page (PDF for now),
+    and create basic field placeholders.
+    """
+    document = models.Document(
+        tenant_id=tenant_id,
+        original_filename=upload.filename or "uploaded-document",
+        stored_path="",
+        mime_type=upload.content_type,
+        doc_type=doc_type,
+    )
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+
+    stored_path = _save_upload_file(tenant_id, upload, document.id)
+    document.stored_path = stored_path
+
+    pages: list[tuple[int, str]] = []
+    if (upload.content_type or "").lower() in ("application/pdf", "pdf") or stored_path.lower().endswith(
+        ".pdf"
+    ):
+        pages = _extract_pages_from_pdf(stored_path)
+
+    for page_number, text in pages:
+        page = models.DocumentPage(
+            document_id=document.id,
+            page_number=page_number,
+            text=text,
+        )
+        db.add(page)
+
+    db.commit()
+    db.refresh(document)
+
+    # Simple placeholder structured fields: real extraction will be implemented later.
+    if pages:
+        first_page_text = pages[0][1]
+        placeholder_fields: list[models.DocumentField] = [
+            models.DocumentField(
+                document_id=document.id,
+                name=models.FieldName.AMOUNT,
+                value="TBD – to be extracted by analysis pipeline",
+                page_number=None,
+            ),
+            models.DocumentField(
+                document_id=document.id,
+                name=models.FieldName.BENEFICIARIES,
+                value=first_page_text[:500],
+                page_number=1,
+            ),
+        ]
+        for field in placeholder_fields:
+            db.add(field)
+        db.commit()
+
+    return document
+

@@ -69,6 +69,9 @@ class FieldName(str, Enum):
 class DocumentUploadResponse(BaseModel):
     document_id: int
     pages: int
+    has_text: bool = False
+    low_quality: bool = False
+    text_preview: str | None = None
 
 
 class DocumentListItem(BaseModel):

@@ -65,6 +65,30 @@ export default function UploadPage() {
     setUploading(true);
     try {
       const result = await uploadDocument(file, docType);
+      if (!result.has_text) {
+        setError(
+          "No readable text could be extracted from this file. Please upload a PDF or Word document with selectable text, or a CSV file."
+        );
+        return;
+      }
+      if (result.low_quality) {
+        const preview =
+          result.text_preview && result.text_preview.trim().length > 0
+            ? result.text_preview
+            : "(OCR could only recover a few characters.)";
+
+        setError(
+          [
+            "The document was recognized, but the scan quality is very low.",
+            "Only a small amount of text could be extracted, so the analysis may be incomplete or inaccurate.",
+            "",
+            "Sample of extracted text:",
+            "",
+            preview,
+          ].join("\n")
+        );
+        return;
+      }
       router.push(`/documents/${result.document_id}/${viewAs}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed.";

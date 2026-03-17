@@ -25,3 +25,18 @@ build/
 
 # Test data
 test_sample.csv
+
+# Local uploads and OCR artifacts
+data/uploads/
+test_ocr.png
+test_pdf_ocr.py
+test_pytesseract.py
+testdeepseek.py
+deepseek.env
+
+# Tesseract / Poppler binaries and data
+*.exe
+*.dll
+tessdata/
+*.html
+doc/

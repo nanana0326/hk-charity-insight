@@ -1,7 +1,19 @@
 import os
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import BaseModel
+
+# Load .env from project root so DEEPSEEK_API_KEY works even when API is started by uvicorn --reload.
+# This file lives at apps/api/config.py, so project root is three levels up.
+try:
+    from dotenv import load_dotenv
+
+    _env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    load_dotenv(_env_path)
+except ImportError:
+    # If python-dotenv is not installed, we simply fall back to OS env vars.
+    pass
 
 
 class Settings(BaseModel):
@@ -25,6 +37,13 @@ class Settings(BaseModel):
     ]
 
     data_retention_days: int = int(os.getenv("DATA_RETENTION_DAYS", "180"))
+
+    # LLM / DeepSeek
+    deepseek_api_key: str | None = os.getenv("DEEPSEEK_API_KEY")
+    deepseek_model: str = os.getenv("DEEPSEEK_MODEL_NAME", "deepseek-chat")
+    deepseek_base_url: str = os.getenv(
+        "DEEPSEEK_BASE_URL", "https://api.deepseek.com"
+    )
 
 
 @lru_cache

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException, status
 from sqlalchemy.orm import Session
 
-from . import analysis, audit, ga_gsc, google_oauth, ingest, maintenance, models, schemas
+from . import analysis, audit, ga_gsc, google_oauth, ingest, llm_analysis, maintenance, models, schemas
 from .db import get_db
 from .deps import get_request_context, require_internal_actor, require_public_view
 
@@ -121,13 +121,19 @@ async def upload_document(
                 detail="Unsupported file type",
             )
 
-    document = ingest.ingest_document(
+    document, has_text, total_chars, preview_text = ingest.ingest_document(
         db,
         tenant_id=ctx.tenant_id,
         upload=file,
-        doc_type=models.DocumentType(doc_type) if doc_type in ("annual_report", "application", "project_report", "other") else models.DocumentType.OTHER,
+        doc_type=models.DocumentType(doc_type)
+        if doc_type in ("annual_report", "application", "project_report", "other")
+        else models.DocumentType.OTHER,
     )
     pages_count = len(document.pages)
+
+    # Decide whether the extracted text is too low quality to be reliable.
+    MIN_CHARS_FOR_USABLE = 200
+    low_quality = bool(has_text and total_chars < MIN_CHARS_FOR_USABLE)
     audit.log_event(
         db,
         tenant_id=ctx.tenant_id,
@@ -137,7 +143,13 @@ async def upload_document(
         actor_role=ctx.role.value,
         metadata={"pages": pages_count, "mime_type": file.content_type},
     )
-    return schemas.DocumentUploadResponse(document_id=document.id, pages=pages_count)
+    return schemas.DocumentUploadResponse(
+        document_id=document.id,
+        pages=pages_count,
+        has_text=has_text,
+        low_quality=low_quality,
+        text_preview=preview_text,
+    )
 
 
 @router.api_route(
@@ -159,13 +171,18 @@ async def analyze_document(
             detail="Document not found",
         )
 
-    if mode == schemas.AnalysisMode.FUNDER:
-        # Enforce internal-only access.
-        require_internal_actor(ctx)
-        report = analysis.generate_report_for_funder(document)
-    else:
-        # Public mode: any role within the tenant can request.
-        report = analysis.generate_report_for_public(document)
+    # Use LLM analysis only; no static fallback.
+    report = llm_analysis.generate_report_with_gemini(document, mode)
+
+    if report is None:
+        import logging
+        logging.getLogger(__name__).warning(
+            "Returning 503: AI analysis not available (missing DEEPSEEK_API_KEY or DeepSeek API error)"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI analysis is not available. Check LLM configuration.",
+        )
 
     audit.log_event(
         db,

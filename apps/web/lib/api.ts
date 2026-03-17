@@ -74,7 +74,13 @@ export async function fetchReport(
 export async function uploadDocument(
   file: File,
   docType: string = "other"
-): Promise<{ document_id: number; pages: number }> {
+): Promise<{
+  document_id: number;
+  pages: number;
+  has_text: boolean;
+  low_quality?: boolean;
+  text_preview?: string | null;
+}> {
   const form = new FormData();
   form.append("file", file);
   form.append("doc_type", docType);
@@ -88,7 +94,13 @@ export async function uploadDocument(
     const err = await res.json().catch(() => ({}));
     throw new Error((err as { detail?: string }).detail ?? res.statusText);
   }
-  return (await res.json()) as { document_id: number; pages: number };
+  return (await res.json()) as {
+    document_id: number;
+    pages: number;
+    has_text: boolean;
+    low_quality?: boolean;
+    text_preview?: string | null;
+  };
 }
 
 export async function fetchFunderReport(documentId: number): Promise<InsightReport> {

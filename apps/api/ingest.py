@@ -6,8 +6,14 @@ from typing import Tuple
 from fastapi import UploadFile
 from pypdf import PdfReader
 from sqlalchemy.orm import Session
+import pytesseract
+from pdf2image import convert_from_path
 
 from . import models
+
+# Configure Tesseract and Poppler paths for OCR.
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+POPPLER_PATH = r"C:\Users\Lenovo\Downloads\Release-25.12.0-0\poppler-25.12.0\bin"
 
 
 BASE_STORAGE = pathlib.Path(os.getenv("DOCUMENT_STORAGE_ROOT", "data/uploads"))
@@ -43,6 +49,14 @@ def _extract_pages_from_pdf(path: str) -> list[Tuple[int, str]]:
         pages.append((idx, text))
     return pages
 
+def _ocr_pages_from_pdf(path: str) -> list[Tuple[int, str]]:
+    """Fallback OCR for image-only PDFs."""
+    images = convert_from_path(path, poppler_path=POPPLER_PATH)
+    pages: list[Tuple[int, str]] = []
+    for idx, img in enumerate(images, start=1):
+        text = pytesseract.image_to_string(img, lang="eng")
+        pages.append((idx, text or ""))
+    return pages
 
 def _extract_pages_from_csv(path: str) -> list[Tuple[int, str]]:
     """Read CSV and return as a single page of readable text for analysis."""
@@ -73,7 +87,7 @@ def ingest_document(
     tenant_id: int,
     upload: UploadFile,
     doc_type: models.DocumentType = models.DocumentType.OTHER,
-) -> models.Document:
+) -> tuple[models.Document, bool, int, str | None]:
     """
     Store uploaded file, extract plain text by page (PDF for now),
     and create basic field placeholders.
@@ -97,10 +111,12 @@ def ingest_document(
         ".pdf"
     ):
         pages = _extract_pages_from_pdf(stored_path)
+        if not any(text.strip() for _, text in pages):
+            pages = _ocr_pages_from_pdf(stored_path)
     elif (upload.content_type or "").lower() in (
         "text/csv",
         "application/csv",
-        "text/comma-separated-values",
+        "text-comma-separated-values",
     ) or stored_path.lower().endswith(".csv"):
         pages = _extract_pages_from_csv(stored_path)
 
@@ -115,7 +131,13 @@ def ingest_document(
     db.commit()
     db.refresh(document)
 
-    # Simple placeholder structured fields: real extraction will be implemented later.
+    # Aggregate OCR / text extraction quality.
+    total_chars = sum(len(text.strip()) for _, text in pages)
+    has_text = total_chars > 0
+
+    preview_chunks = [text.strip() for _, text in pages if text.strip()]
+    preview_text = "\n\n".join(preview_chunks)[:800] if preview_chunks else None
+
     if pages:
         first_page_text = pages[0][1]
         placeholder_fields: list[models.DocumentField] = [
@@ -136,5 +158,5 @@ def ingest_document(
             db.add(field)
         db.commit()
 
-    return document
+    return document, has_text, total_chars, preview_text
 

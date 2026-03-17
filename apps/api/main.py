@@ -1,9 +1,14 @@
+import logging
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from . import db, models, schemas
+from .config import get_settings
 from .deps import get_request_context
 from .routers import router as core_router
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="HK Charity Insights API",
@@ -29,6 +34,12 @@ def on_startup() -> None:
         if session.query(models.Tenant).first() is None:
             session.add(models.Tenant(name="Foundation for Shared Impact", is_active=True))
             session.commit()
+
+    settings = get_settings()
+    logger.info(
+        "DeepSeek API key configured: %s (set DEEPSEEK_API_KEY in this process if False)",
+        bool(settings.deepseek_api_key),
+    )
 
 
 app.include_router(core_router, prefix="/api")

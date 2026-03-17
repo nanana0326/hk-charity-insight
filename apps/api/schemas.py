@@ -52,8 +52,9 @@ class RequestContext(BaseModel):
 
 class DocumentType(str, Enum):
     ANNUAL_REPORT = "annual_report"
-    APPLICATION = "application"
-    PROJECT_REPORT = "project_report"
+    FINANCIAL_REPORT = "financial_report"
+    IMPACT_REPORT = "impact_report"
+    FUNDING_APPLICATION = "funding_application"
     OTHER = "other"
 
 

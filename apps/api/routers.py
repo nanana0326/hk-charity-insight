@@ -126,7 +126,14 @@ async def upload_document(
         tenant_id=ctx.tenant_id,
         upload=file,
         doc_type=models.DocumentType(doc_type)
-        if doc_type in ("annual_report", "application", "project_report", "other")
+        if doc_type
+        in (
+            "annual_report",
+            "financial_report",
+            "impact_report",
+            "funding_application",
+            "other",
+        )
         else models.DocumentType.OTHER,
     )
     pages_count = len(document.pages)

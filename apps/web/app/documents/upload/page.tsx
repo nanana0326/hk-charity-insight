@@ -7,8 +7,9 @@ import { uploadDocument, fetchDocumentList } from "@/lib/api";
 
 const DOC_TYPES = [
   { value: "annual_report", label: "Annual report" },
-  { value: "application", label: "Funding application" },
-  { value: "project_report", label: "Project report" },
+  { value: "financial_report", label: "Financial report" },
+  { value: "impact_report", label: "Impact report" },
+  { value: "funding_application", label: "Funding application" },
   { value: "other", label: "Other" },
 ] as const;
 

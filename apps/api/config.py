@@ -38,6 +38,15 @@ class Settings(BaseModel):
 
     data_retention_days: int = int(os.getenv("DATA_RETENTION_DAYS", "180"))
 
+    web_base_url: str = os.getenv("WEB_BASE_URL", "http://localhost:3000")
+    smtp_host: str | None = os.getenv("SMTP_HOST")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user: str | None = os.getenv("SMTP_USER")
+    smtp_password: str | None = os.getenv("SMTP_PASSWORD")
+    smtp_from_email: str | None = os.getenv("SMTP_FROM_EMAIL")
+    smtp_use_tls: bool = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    smtp_use_ssl: bool = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
+
     # LLM / DeepSeek
     deepseek_api_key: str | None = os.getenv("DEEPSEEK_API_KEY")
     deepseek_model: str = os.getenv("DEEPSEEK_MODEL_NAME", "deepseek-chat")

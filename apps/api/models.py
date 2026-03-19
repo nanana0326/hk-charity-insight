@@ -42,6 +42,12 @@ class User(Base):
     display_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     role: Mapped[UserRole] = mapped_column(SAEnum(UserRole), default=UserRole.VIEWER)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Password-based auth fields (optional for backwards compatibility)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    reset_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    reset_token_expires_at: Mapped[Optional[DateTime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     tenant: Mapped["Tenant"] = relationship(back_populates="users")
 
@@ -59,6 +65,9 @@ class Document(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenants.id"), index=True)
+    created_by_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
+    )
     original_filename: Mapped[str] = mapped_column(String(512))
     stored_path: Mapped[str] = mapped_column(String(1024))
     mime_type: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -70,6 +79,7 @@ class Document(Base):
     )
 
     tenant: Mapped["Tenant"] = relationship()
+    created_by: Mapped[Optional["User"]] = relationship()
     pages: Mapped[list["DocumentPage"]] = relationship(
         back_populates="document", cascade="all, delete-orphan"
     )

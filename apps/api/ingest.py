@@ -85,6 +85,7 @@ def ingest_document(
     db: Session,
     *,
     tenant_id: int,
+    user_id: int | None,
     upload: UploadFile,
     doc_type: models.DocumentType = models.DocumentType.OTHER,
 ) -> tuple[models.Document, bool, int, str | None]:
@@ -94,6 +95,7 @@ def ingest_document(
     """
     document = models.Document(
         tenant_id=tenant_id,
+        created_by_user_id=user_id,
         original_filename=upload.filename or "uploaded-document",
         stored_path="",
         mime_type=upload.content_type,

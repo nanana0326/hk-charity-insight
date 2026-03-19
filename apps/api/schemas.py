@@ -32,6 +32,26 @@ class UserBase(BaseModel):
     role: UserRole = UserRole.VIEWER
 
 
+class AuthRegisterPayload(BaseModel):
+    email: EmailStr
+    password: str
+    display_name: Optional[str] = None
+
+
+class AuthLoginPayload(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AuthForgotPasswordPayload(BaseModel):
+    email: EmailStr
+
+
+class AuthResetPasswordPayload(BaseModel):
+    token: str
+    new_password: str
+
+
 class UserCreate(UserBase):
     tenant_id: int
 
@@ -48,6 +68,7 @@ class UserRead(UserBase):
 class RequestContext(BaseModel):
     tenant_id: int
     role: UserRole
+    user_id: int | None = None
 
 
 class DocumentType(str, Enum):

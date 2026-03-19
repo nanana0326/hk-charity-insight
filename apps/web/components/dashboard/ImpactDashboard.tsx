@@ -43,7 +43,7 @@ export function ImpactDashboard() {
   if (error) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        Failed to load: {error}. Make sure the API is running and GA/GSC data has been collected.
+        Unable to load web impact data right now. {error}
       </div>
     );
   }
@@ -58,11 +58,6 @@ export function ImpactDashboard() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-primary-light)]/40 p-6">
-        <h2 className="text-lg font-semibold text-gray-900">{summary.title}</h2>
-        <p className="mt-2 text-sm text-gray-600">{summary.summary}</p>
-      </section>
-
       <section className="grid gap-6 md:grid-cols-2">
         {summary.charts.map((chart) => (
           <BaseChart key={chart.id} spec={chart} />

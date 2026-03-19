@@ -8,14 +8,35 @@ from .db import get_db
 async def get_request_context(
     x_tenant_id: int | None = Header(default=None, alias="X-Tenant-Id"),
     x_role: str | None = Header(default=None, alias="X-User-Role"),
+    x_user_id: int | None = Header(default=None, alias="X-User-Id"),
     db: Session = Depends(get_db),
 ) -> schemas.RequestContext:
     """
-    Minimal tenant/role resolution.
+    Resolve a minimal request context (tenant, role, optional user) from headers.
 
-    For MVP we accept tenant/role via headers.
-    Later this can be replaced by a proper auth system (JWT, OAuth, etc.).
+    For MVP we accept tenant/role/user via headers.
     """
+    # If a concrete user id is provided, derive tenant and role from the user record.
+    if x_user_id is not None:
+        user = db.get(models.User, x_user_id)
+        if user is None or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User not found or inactive",
+            )
+        tenant = db.get(models.Tenant, user.tenant_id)
+        if tenant is None or not tenant.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant not found or inactive",
+            )
+        return schemas.RequestContext(
+            tenant_id=tenant.id,
+            role=user.role,
+            user_id=user.id,
+        )
+
+    # Fallback: old behaviour based on X-Tenant-Id and X-User-Role.
     if x_tenant_id is None or x_role is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -37,7 +58,7 @@ async def get_request_context(
             detail="Invalid user role",
         )
 
-    return schemas.RequestContext(tenant_id=tenant.id, role=role)
+    return schemas.RequestContext(tenant_id=tenant.id, role=role, user_id=None)
 
 
 def require_internal_actor(ctx: schemas.RequestContext = Depends(get_request_context)):

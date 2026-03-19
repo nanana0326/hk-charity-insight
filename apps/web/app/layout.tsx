@@ -2,6 +2,7 @@ import "./globals.css";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import AuthNav from "./auth-nav";
 
 export const metadata = {
   title: "Foundation for Shared Impact",
@@ -53,6 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               >
                 Web impact
               </Link>
+              <AuthNav />
               <span
                 className="h-4 w-px shrink-0 self-center bg-gray-300"
                 aria-hidden="true"
@@ -63,7 +65,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 rel="noopener noreferrer"
                 className="whitespace-nowrap rounded-full px-3 py-1.5 font-medium text-gray-700 no-underline transition-colors hover:bg-[var(--color-primary)] hover:text-white"
               >
-                Funding Finder
+                Grant Finder
               </a>
               <a
                 href="https://sd-alpha-lemon.vercel.app/"
@@ -104,7 +106,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 rel="noopener noreferrer"
                 className="font-medium text-[var(--color-primary)] no-underline hover:underline"
               >
-                Funding Finder
+                Grant Finder
               </a>
               <a
                 href="https://sd-alpha-lemon.vercel.app/"

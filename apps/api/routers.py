@@ -9,6 +9,7 @@ from .deps import get_request_context, require_internal_actor, require_public_vi
 router = APIRouter()
 
 
+
 @router.post(
     "/tenants",
     response_model=schemas.TenantRead,
@@ -71,9 +72,16 @@ def list_documents(
     ctx: schemas.RequestContext = Depends(get_request_context),
     db: Session = Depends(get_db),
 ) -> schemas.DocumentListResponse:
+    # Require an authenticated user; otherwise do not return any documents.
+    if ctx.user_id is None:
+        return schemas.DocumentListResponse(documents=[])
+
     rows = (
         db.query(models.Document)
-        .filter(models.Document.tenant_id == ctx.tenant_id)
+        .filter(
+            models.Document.tenant_id == ctx.tenant_id,
+            models.Document.created_by_user_id == ctx.user_id,
+        )
         .order_by(models.Document.created_at.desc())
         .all()
     )
@@ -124,6 +132,7 @@ async def upload_document(
     document, has_text, total_chars, preview_text = ingest.ingest_document(
         db,
         tenant_id=ctx.tenant_id,
+        user_id=ctx.user_id,
         upload=file,
         doc_type=models.DocumentType(doc_type)
         if doc_type

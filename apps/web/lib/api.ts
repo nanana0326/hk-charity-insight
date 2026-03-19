@@ -48,13 +48,46 @@ export interface WebImpactSummary {
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
-const defaultHeaders = {
-  "X-Tenant-Id": "1",
-  "X-User-Role": "admin",
-};
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") {
+    // Server-side: fall back to default dev tenant/role.
+    return {
+      "X-Tenant-Id": "1",
+      "X-User-Role": "admin",
+    };
+  }
+
+  const stored = window.localStorage.getItem("auth");
+  if (!stored) {
+    return {
+      "X-Tenant-Id": "1",
+      "X-User-Role": "admin",
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(stored) as {
+      tenantId?: number;
+      userId?: number;
+      role?: string;
+    };
+    const headers: Record<string, string> = {};
+    if (parsed.tenantId) headers["X-Tenant-Id"] = String(parsed.tenantId);
+    if (parsed.role) headers["X-User-Role"] = parsed.role;
+    if (parsed.userId) headers["X-User-Id"] = String(parsed.userId);
+    return headers;
+  } catch {
+    return {
+      "X-Tenant-Id": "1",
+      "X-User-Role": "admin",
+    };
+  }
+}
 
 export async function fetchDocumentList(): Promise<DocumentListResponse> {
-  const res = await fetch(`${API_BASE}/documents`, { headers: defaultHeaders });
+  const res = await fetch(`${API_BASE}/documents`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to list documents: ${res.statusText}`);
   return (await res.json()) as DocumentListResponse;
 }
@@ -65,7 +98,7 @@ export async function fetchReport(
 ): Promise<InsightReport> {
   const res = await fetch(
     `${API_BASE}/documents/${documentId}/analyze?mode=${mode}`,
-    { headers: defaultHeaders }
+    { headers: getAuthHeaders() }
   );
   if (!res.ok) throw new Error(`Failed to fetch report: ${res.statusText}`);
   return (await res.json()) as InsightReport;
@@ -87,7 +120,7 @@ export async function uploadDocument(
 
   const res = await fetch(`${API_BASE}/documents/upload`, {
     method: "POST",
-    headers: { ...defaultHeaders } as Record<string, string>,
+    headers: { ...getAuthHeaders() } as Record<string, string>,
     body: form,
   });
   if (!res.ok) {
@@ -112,7 +145,7 @@ export async function fetchWebImpactSummary(
 ): Promise<WebImpactSummary> {
   const url = new URL(`${API_BASE}/web-impact/summary`);
   url.searchParams.set("days", String(days));
-  const res = await fetch(url.toString(), { headers: defaultHeaders });
+  const res = await fetch(url.toString(), { headers: getAuthHeaders() });
   if (!res.ok) throw new Error(`Failed to fetch impact summary: ${res.statusText}`);
   return (await res.json()) as WebImpactSummary;
 }

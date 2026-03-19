@@ -11,6 +11,35 @@ type DocumentListItem = {
   created_at: string;
 };
 
+type StoredAuth = {
+  userId: number;
+  tenantId: number;
+  role: string;
+  email: string;
+};
+
+function getStoredAuth(): StoredAuth | null {
+  if (typeof window === "undefined") return null;
+  const stored = window.localStorage.getItem("auth");
+  if (!stored) return null;
+  try {
+    const parsed = JSON.parse(stored) as Partial<StoredAuth>;
+    if (
+      typeof parsed.userId === "number" &&
+      typeof parsed.tenantId === "number" &&
+      typeof parsed.role === "string" &&
+      parsed.role.length > 0 &&
+      typeof parsed.email === "string" &&
+      parsed.email.length > 0
+    ) {
+      return parsed as StoredAuth;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function DocIcon() {
   return (
     <svg className="w-10 h-10 text-[var(--color-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,15 +60,40 @@ export default function HomePage() {
   const [documents, setDocuments] = useState<DocumentListItem[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
 
   useEffect(() => {
-    fetchDocumentList()
-      .then((r) => {
-        setDocuments(r.documents);
+    function syncAuthState() {
+      // Only load "Your documents" after login.
+      const auth = getStoredAuth();
+      if (!auth) {
+        setIsAuthed(false);
+        setDocuments([]);
         setListError(false);
-      })
-      .catch(() => setListError(true))
-      .finally(() => setListLoading(false));
+        setListLoading(false);
+        return;
+      }
+      setIsAuthed(true);
+      setListLoading(true);
+      fetchDocumentList()
+        .then((r) => {
+          setDocuments(r.documents);
+          setListError(false);
+        })
+        .catch(() => {
+          setListError(true);
+          setIsAuthed(false);
+        })
+        .finally(() => setListLoading(false));
+    }
+
+    syncAuthState();
+    window.addEventListener("auth-changed", syncAuthState);
+    window.addEventListener("storage", syncAuthState);
+    return () => {
+      window.removeEventListener("auth-changed", syncAuthState);
+      window.removeEventListener("storage", syncAuthState);
+    };
   }, []);
 
   return (
@@ -115,26 +169,28 @@ export default function HomePage() {
         </Link>
       </section>
 
-      <section className="rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 shadow-sm flex items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">Your documents</h3>
-          <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-            {listLoading
-              ? "Loading…"
-              : listError
-              ? "Documents could not be loaded."
-              : documents.length === 0
-              ? "No documents yet. Upload a document to get started."
-              : `${documents.length} document${documents.length > 1 ? "s" : ""} uploaded.`}
-          </p>
-        </div>
-        <Link
-          href="/documents/upload"
-          className="whitespace-nowrap rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] no-underline hover:bg-orange-100"
-        >
-          View documents →
-        </Link>
-      </section>
+      {isAuthed && (
+        <section className="rounded-2xl border border-[var(--color-border)] bg-white px-4 py-3 shadow-sm flex items-center justify-between gap-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Your documents</h3>
+            <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+              {listLoading
+                ? "Loading…"
+                : listError
+                ? "Documents could not be loaded."
+                : documents.length === 0
+                ? "No documents yet. Upload a document to get started."
+                : `${documents.length} document${documents.length > 1 ? "s" : ""} uploaded.`}
+            </p>
+          </div>
+          <Link
+            href="/documents/upload"
+            className="whitespace-nowrap rounded-full border border-[var(--color-border)] bg-[var(--color-primary-light)] px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] no-underline hover:bg-orange-100"
+          >
+            View documents →
+          </Link>
+        </section>
+      )}
     </div>
   );
 }

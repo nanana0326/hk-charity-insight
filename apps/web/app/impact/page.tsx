@@ -10,10 +10,10 @@ export default function ImpactPage() {
       </p>
 
       <section className="rounded-2xl border border-[var(--color-border)] bg-gray-50 p-6">
-        <h3 className="text-sm font-semibold text-gray-900 mb-2">
+        <h3 className="mb-2 text-lg font-semibold text-gray-900">
           How the web impact report works
         </h3>
-        <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
+        <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 [&_strong]:text-[var(--color-primary)]">
           <li>
             <strong>Connect Google</strong> — Your organisation authorises the platform to read Google Analytics and/or Google Search Console (via Google OAuth). This is done once per organisation; the API stores the connection securely.
           </li>

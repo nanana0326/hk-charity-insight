@@ -88,6 +88,11 @@ docker compose up -d
 
 This will start PostgreSQL, Redis, and MinIO with development credentials.
 
+### Deploy frontend (Vercel)
+
+- Connect this GitHub repo in Vercel and set **Root Directory** to **`apps/web`** (the `vercel.json` there runs install/build from the monorepo root so `patch-package` can patch hoisted `next`).
+- Set **`NEXT_PUBLIC_API_BASE_URL`** to your deployed API origin + `/api` if it is not `localhost`.
+
 ## Next steps
 
 - **Stabilise PDF OCR** (config-driven binaries, cross-platform behaviour, or external OCR), and tighten UX when scans fail.

@@ -9,48 +9,45 @@ from .config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_settings = get_settings()
 _client: Optional[OpenAI] = None
 
 
 def _get_client() -> Optional[OpenAI]:
-    """
-    Lazily initialise the DeepSeek client if an API key is configured.
-    """
+    """Lazily initialise an OpenAI-compatible client pointing at Ollama."""
     global _client
 
-    if not _settings.deepseek_api_key:
-        return None
-
+    settings = get_settings()
     if _client is None:
         try:
             _client = OpenAI(
-                api_key=_settings.deepseek_api_key,
-                base_url=_settings.deepseek_base_url,
+                api_key=settings.ollama_api_key,
+                base_url=settings.ollama_base_url,
             )
         except Exception:
-            logger.exception("Failed to initialise DeepSeek client")
+            logger.exception("Failed to initialise Ollama client")
             return None
-
     return _client
 
 
-def generate_report_with_gemini(
+def generate_report_with_ollama(
     document: models.Document,
     mode: schemas.AnalysisMode,
 ) -> Optional[schemas.InsightReport]:
     """
-    Optional DeepSeek-powered report.
+    LLM-powered report via local Ollama (OpenAI-compatible API).
 
-    If no API key is configured or the call fails, returns None so that
-    callers can fall back to the static MVP implementation.
+    If the client cannot start or the call fails, returns None so callers
+    can return HTTP 503.
     """
     client = _get_client()
     if client is None:
         logger.warning(
-            "DeepSeek client not available (DEEPSEEK_API_KEY unset or init failed); cannot generate report"
+            "Ollama client not available; ensure Ollama is running and "
+            "OLLAMA_BASE_URL / OLLAMA_MODEL are correct"
         )
         return None
+
+    settings = get_settings()
 
     # Concatenate page text (or fields) into a single prompt-friendly string.
     texts = [p.text for p in document.pages if p.text]
@@ -82,7 +79,7 @@ def generate_report_with_gemini(
 
     try:
         response = client.chat.completions.create(
-            model=_settings.deepseek_model or "deepseek-chat",
+            model=settings.ollama_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {
@@ -95,7 +92,7 @@ def generate_report_with_gemini(
         choice = response.choices[0]
         summary_text = (choice.message.content or "").strip()
     except Exception:
-        logger.exception("DeepSeek analysis failed")
+        logger.exception("Ollama LLM analysis failed")
         return None
 
     if not summary_text:
@@ -110,10 +107,9 @@ def generate_report_with_gemini(
     return schemas.InsightReport(
         mode=mode,
         document_id=document.id,
-        title="AI-generated analysis using DeepSeek",
+        title="AI-generated analysis using Ollama",
         summary=summary_text,
         sections=[section],
         charts=[],
         citations=[],
     )
-

@@ -1,0 +1,28 @@
+diff --git a/node_modules/next/dist/esm/lib/helpers/get-registry.js b/node_modules/next/dist/esm/lib/helpers/get-registry.js
+index 1c20716..d0ee250 100644
+--- a/node_modules/next/dist/esm/lib/helpers/get-registry.js
++++ b/node_modules/next/dist/esm/lib/helpers/get-registry.js
+@@ -9,7 +9,8 @@ import { getNodeOptionsWithoutInspect } from "../../server/lib/utils";
+     let registry = `https://registry.npmjs.org/`;
+     try {
+         const pkgManager = getPkgManager(baseDir);
+-        const output = execSync(`${pkgManager} config get registry`, {
++        const registryCmd = pkgManager === "npm" ? `${pkgManager} config get registry --no-workspaces` : `${pkgManager} config get registry`;
++        const output = execSync(registryCmd, {
+             env: {
+                 ...process.env,
+                 NODE_OPTIONS: getNodeOptionsWithoutInspect()
+diff --git a/node_modules/next/dist/lib/helpers/get-registry.js b/node_modules/next/dist/lib/helpers/get-registry.js
+index 2f10acc..fb12fb8 100644
+--- a/node_modules/next/dist/lib/helpers/get-registry.js
++++ b/node_modules/next/dist/lib/helpers/get-registry.js
+@@ -15,7 +15,8 @@ function getRegistry(baseDir = process.cwd()) {
+     let registry = `https://registry.npmjs.org/`;
+     try {
+         const pkgManager = (0, _getpkgmanager.getPkgManager)(baseDir);
+-        const output = (0, _child_process.execSync)(`${pkgManager} config get registry`, {
++        const registryCmd = pkgManager === "npm" ? `${pkgManager} config get registry --no-workspaces` : `${pkgManager} config get registry`;
++        const output = (0, _child_process.execSync)(registryCmd, {
+             env: {
+                 ...process.env,
+                 NODE_OPTIONS: (0, _utils.getNodeOptionsWithoutInspect)()

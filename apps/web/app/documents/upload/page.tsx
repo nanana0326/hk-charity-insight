@@ -76,12 +76,12 @@ export default function UploadPage() {
         const preview =
           result.text_preview && result.text_preview.trim().length > 0
             ? result.text_preview
-            : "(OCR could only recover a few characters.)";
+            : "(Almost no text was recovered.)";
 
         setError(
           [
-            "The document was recognized, but the scan quality is very low.",
-            "Only a small amount of text could be extracted, so the analysis may be incomplete or inaccurate.",
+            "This PDF has very little extractable text (under 200 characters).",
+            "It may be a scan with poor OCR, or mostly images. Analysis may be incomplete or inaccurate.",
             "",
             "Sample of extracted text:",
             "",

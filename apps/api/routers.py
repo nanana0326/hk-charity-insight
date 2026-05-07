@@ -147,9 +147,14 @@ async def upload_document(
     )
     pages_count = len(document.pages)
 
-    # Decide whether the extracted text is too low quality to be reliable.
-    MIN_CHARS_FOR_USABLE = 200
-    low_quality = bool(has_text and total_chars < MIN_CHARS_FOR_USABLE)
+    # Too-short warning only for PDFs (scanned or sparse text). CSV/Word are not flagged on length.
+    MIN_CHARS_FOR_USABLE_PDF = 200
+    stored_lower = (document.stored_path or "").lower()
+    ct_lower = (file.content_type or "").lower()
+    is_pdf = ct_lower in ("application/pdf", "pdf") or stored_lower.endswith(".pdf")
+    low_quality = bool(
+        has_text and total_chars < MIN_CHARS_FOR_USABLE_PDF and is_pdf
+    )
     audit.log_event(
         db,
         tenant_id=ctx.tenant_id,
@@ -188,16 +193,16 @@ async def analyze_document(
         )
 
     # Use LLM analysis only; no static fallback.
-    report = llm_analysis.generate_report_with_gemini(document, mode)
+    report = llm_analysis.generate_report_with_ollama(document, mode)
 
     if report is None:
         import logging
         logging.getLogger(__name__).warning(
-            "Returning 503: AI analysis not available (missing DEEPSEEK_API_KEY or DeepSeek API error)"
+            "Returning 503: AI analysis not available (Ollama unreachable or misconfigured)"
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI analysis is not available. Check LLM configuration.",
+            detail="AI analysis is not available. Ensure Ollama is running and OLLAMA_BASE_URL / OLLAMA_MODEL are correct.",
         )
 
     audit.log_event(

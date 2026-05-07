@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-# Load .env from project root so DEEPSEEK_API_KEY works even when API is started by uvicorn --reload.
+# Load .env from project root so LLM and DB env vars work when API is started by uvicorn --reload.
 # This file lives at apps/api/config.py, so project root is three levels up.
 try:
     from dotenv import load_dotenv
@@ -47,15 +47,12 @@ class Settings(BaseModel):
     smtp_use_tls: bool = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
     smtp_use_ssl: bool = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
 
-    # LLM / DeepSeek
-    deepseek_api_key: str | None = os.getenv("DEEPSEEK_API_KEY")
-    deepseek_model: str = os.getenv("DEEPSEEK_MODEL_NAME", "deepseek-chat")
-    deepseek_base_url: str = os.getenv(
-        "DEEPSEEK_BASE_URL", "https://api.deepseek.com"
-    )
+    # LLM: Ollama only (local, OpenAI-compatible /v1 endpoint)
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
+    ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.2")
+    ollama_api_key: str = os.getenv("OLLAMA_API_KEY", "ollama")
 
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

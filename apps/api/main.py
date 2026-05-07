@@ -71,8 +71,9 @@ def on_startup() -> None:
 
     settings = get_settings()
     logger.info(
-        "DeepSeek API key configured: %s (set DEEPSEEK_API_KEY in this process if False)",
-        bool(settings.deepseek_api_key),
+        "LLM: Ollama at %s model=%s",
+        settings.ollama_base_url,
+        settings.ollama_model,
     )
 
 

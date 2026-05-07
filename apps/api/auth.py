@@ -53,14 +53,23 @@ def _verify_password(password: str, stored: str) -> bool:
 
 def _send_password_reset_email(to_email: str, reset_link: str) -> None:
     settings = get_settings()
-    if (
-        not settings.smtp_host
-        or not settings.smtp_user
-        or not settings.smtp_password
-        or not settings.smtp_from_email
-    ):
+    user = (settings.smtp_user or "").strip()
+    password = (settings.smtp_password or "").strip().replace(" ", "")
+    from_addr = (settings.smtp_from_email or "").strip()
+
+    def _looks_placeholder() -> bool:
+        lu, lp = user.lower(), password.lower()
+        if not user or not password or not from_addr:
+            return True
+        if "your_email" in lu or "your_" in lp or "example.com" in lu:
+            return True
+        if len(password) < 8:
+            return True
+        return False
+
+    if not settings.smtp_host or _looks_placeholder():
         logger.warning(
-            "SMTP not configured; password reset email skipped for %s. Reset link: %s",
+            "SMTP not fully configured; password reset email skipped for %s. Reset link: %s",
             to_email,
             reset_link,
         )
@@ -68,7 +77,7 @@ def _send_password_reset_email(to_email: str, reset_link: str) -> None:
 
     msg = EmailMessage()
     msg["Subject"] = "Reset your password"
-    msg["From"] = settings.smtp_from_email
+    msg["From"] = from_addr
     msg["To"] = to_email
     msg.set_content(
         "We received a request to reset your password.\n\n"
@@ -76,17 +85,26 @@ def _send_password_reset_email(to_email: str, reset_link: str) -> None:
         "If you did not request this, you can ignore this email."
     )
 
-    if settings.smtp_use_ssl:
-        with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=20) as smtp:
-            smtp.login(settings.smtp_user, settings.smtp_password)
-            smtp.send_message(msg)
-        return
-
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=20) as smtp:
-        if settings.smtp_use_tls:
-            smtp.starttls()
-        smtp.login(settings.smtp_user, settings.smtp_password)
-        smtp.send_message(msg)
+    try:
+        if settings.smtp_use_ssl:
+            with smtplib.SMTP_SSL(settings.smtp_host, settings.smtp_port, timeout=30) as smtp:
+                smtp.login(user, password)
+                smtp.send_message(msg)
+        else:
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=30) as smtp:
+                smtp.ehlo()
+                if settings.smtp_use_tls:
+                    smtp.starttls()
+                    smtp.ehlo()
+                smtp.login(user, password)
+                smtp.send_message(msg)
+        logger.info("Password reset email sent to %s", to_email)
+    except Exception:
+        logger.exception(
+            "SMTP failed while sending password reset to %s (check Gmail App Password and WEB_BASE_URL). Link was: %s",
+            to_email,
+            reset_link,
+        )
 
 
 @router.post("/auth/register", response_model=schemas.UserRead)
@@ -166,9 +184,9 @@ def forgot_password(
     payload: schemas.AuthForgotPasswordPayload, db: Session = Depends(get_db)
 ) -> dict:
     """
-    Start a password reset flow.
+    Generate a one-time reset token and send email when SMTP is configured.
 
-    For now we generate and store a reset token and expiry, but do not send email.
+    If SMTP is missing or misconfigured, the reset link is only logged at WARNING level.
     """
     tenant = _get_default_tenant(db)
 

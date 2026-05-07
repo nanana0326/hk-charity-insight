@@ -27,6 +27,7 @@ build/
 test_sample.csv
 
 # Local uploads and OCR artifacts
+data/dev.sqlite
 data/uploads/
 test_ocr.png
 test_pdf_ocr.py

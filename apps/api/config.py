@@ -2,7 +2,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Load .env from project root so LLM and DB env vars work when API is started by uvicorn --reload.
 # This file lives at apps/api/config.py, so project root is three levels up.
@@ -16,13 +16,37 @@ except ImportError:
     pass
 
 
-class Settings(BaseModel):
-    database_url: str = (
-        os.getenv(
-            "DATABASE_URL",
-            "postgresql+psycopg2://charity:charity_dev@localhost:5432/charity_insights",
-        )
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _resolve_database_url() -> str:
+    """
+    Resolution order:
+
+    1. **USE_SQLITE_FOR_DEV** (`true` / `1` / `yes`) — forces repo-local SQLite
+       (`data/dev.sqlite`). Wins even if `DATABASE_URL` is set in `.env`, so you
+       can keep Postgres URLs on disk but still run the API without Docker.
+    2. **DATABASE_URL** — explicit Postgres or other backend.
+    3. Default — PostgreSQL on localhost (Docker Compose credentials).
+    """
+    flag = os.getenv("USE_SQLITE_FOR_DEV", "").strip().lower()
+    if flag in ("1", "true", "yes"):
+        data_dir = _REPO_ROOT / "data"
+        data_dir.mkdir(parents=True, exist_ok=True)
+        db_path = (data_dir / "dev.sqlite").resolve()
+        return f"sqlite:///{db_path.as_posix()}"
+
+    explicit = os.getenv("DATABASE_URL")
+    if explicit:
+        return explicit.strip()
+
+    return (
+        "postgresql+psycopg2://charity:charity_dev@localhost:5432/charity_insights"
     )
+
+
+class Settings(BaseModel):
+    database_url: str = Field(default_factory=_resolve_database_url)
     api_debug: bool = os.getenv("API_DEBUG", "true").lower() == "true"
 
     google_client_id: str | None = os.getenv("GOOGLE_CLIENT_ID")

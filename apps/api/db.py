@@ -11,7 +11,12 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_engine(settings.database_url, echo=settings.api_debug)
+_engine_kw: dict = {"echo": settings.api_debug}
+if settings.database_url.startswith("sqlite"):
+    # Required when FastAPI uses one SQLite connection per request thread.
+    _engine_kw["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(settings.database_url, **_engine_kw)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

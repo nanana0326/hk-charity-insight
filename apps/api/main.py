@@ -21,7 +21,11 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # Must stay False while using wildcard origins: browsers reject
+    # `Allow-Origin: *` together with `Allow-Credentials: true` on the actual
+    # response body for cross-origin fetch — symptom: "Failed to fetch".
+    # This API authenticates via headers (e.g. X-Tenant-Id), not cookies.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -31,38 +35,37 @@ app.add_middleware(
 def on_startup() -> None:
     # Create tables on first run; in real deployment this should be via migrations.
     models.Base.metadata.create_all(bind=db.engine)  # type: ignore[arg-type]
-    # Lightweight migrations.
-    with db.engine.connect() as conn:  # type: ignore[arg-type]
-        try:
-            # Ensure per-user ownership field exists on documents.
-            conn.execute(
-                text(
-                    "ALTER TABLE documents "
-                    "ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER NULL"
+    # Lightweight migrations (PostgreSQL-oriented). Fresh SQLite schemas come from create_all.
+    if db.engine.dialect.name != "sqlite":
+        with db.engine.connect() as conn:  # type: ignore[arg-type]
+            try:
+                conn.execute(
+                    text(
+                        "ALTER TABLE documents "
+                        "ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER NULL"
+                    )
                 )
-            )
-            # Ensure password-based auth fields exist on users.
-            conn.execute(
-                text(
-                    "ALTER TABLE users "
-                    "ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NULL"
+                conn.execute(
+                    text(
+                        "ALTER TABLE users "
+                        "ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NULL"
+                    )
                 )
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE users "
-                    "ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255) NULL"
+                conn.execute(
+                    text(
+                        "ALTER TABLE users "
+                        "ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255) NULL"
+                    )
                 )
-            )
-            conn.execute(
-                text(
-                    "ALTER TABLE users "
-                    "ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMPTZ NULL"
+                conn.execute(
+                    text(
+                        "ALTER TABLE users "
+                        "ADD COLUMN IF NOT EXISTS reset_token_expires_at TIMESTAMPTZ NULL"
+                    )
                 )
-            )
-            conn.commit()
-        except Exception:
-            logger.exception("Failed to run lightweight migrations")
+                conn.commit()
+            except Exception:
+                logger.exception("Failed to run lightweight migrations")
     # Ensure a default dev tenant exists so frontend (X-Tenant-Id: 1) works.
     with db.SessionLocal() as session:
         if session.query(models.Tenant).first() is None:

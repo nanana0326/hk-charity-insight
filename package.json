@@ -5,13 +5,9 @@
     "apps/web"
   ],
   "scripts": {
-    "postinstall": "patch-package",
     "dev:web": "npm --prefix apps/web run dev",
     "build:web": "npm --prefix apps/web run build",
     "start:web": "npm --prefix apps/web run start",
     "sync": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"cd \\\"c:/Users/Lenovo/Desktop/港大/cursor\\\"; git add .; git commit -m \\\"auto: $(Get-Date -Format 'yyyy-MM-dd HH:mm')\\\"; git push origin main\""
-  },
-  "devDependencies": {
-    "patch-package": "^8.0.1"
   }
 }
